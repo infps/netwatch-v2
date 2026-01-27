@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import auth from './routes/auth'
 import punch from './routes/punch'
+import admin from './routes/admin'
 import { wsApp, websocket } from './routes/ws'
 
 const app = new Hono()
@@ -10,6 +11,7 @@ app.use('/*', cors())
 
 app.route('/auth', auth)
 app.route('/punch', punch)
+app.route('/admin', admin)
 app.route('/ws', wsApp)
 
 app.get('/health', (c) => c.json({ status: 'ok' }))

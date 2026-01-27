@@ -26,11 +26,12 @@ auth.post('/login', async (c) => {
     return c.json({ error: 'Invalid credentials' }, 401)
   }
 
-  const token = await signJwt({ userId: user.id, email: user.email })
+  const role = (user.role as 'user' | 'admin') || 'user'
+  const token = await signJwt({ userId: user.id, email: user.email, role })
 
   const res: LoginRes = {
     token,
-    user: { id: user.id, email: user.email }
+    user: { id: user.id, email: user.email, role }
   }
 
   return c.json(res)

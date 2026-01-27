@@ -4,7 +4,9 @@ export const users = pgTable('users', {
   id: text('id').primaryKey(),
   email: text('email').unique().notNull(),
   passwordHash: text('password_hash').notNull(),
-  createdAt: bigint('created_at', { mode: 'number' }).notNull()
+  role: text('role').notNull().default('user'),
+  createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  deletedAt: bigint('deleted_at', { mode: 'number' })
 })
 
 export const punches = pgTable('punches', {
