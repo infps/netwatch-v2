@@ -1,5 +1,7 @@
 import { Hono } from 'hono'
+import { eq } from 'drizzle-orm'
 import { db } from '../db/client'
+import { users } from '../db/schema'
 import { signJwt } from '../lib/jwt'
 import type { LoginReq, LoginRes } from '../types'
 
@@ -13,15 +15,13 @@ auth.post('/login', async (c) => {
     return c.json({ error: 'Email and password required' }, 400)
   }
 
-  const user = db.query<{ id: string; email: string; password_hash: string }, [string]>(
-    'SELECT id, email, password_hash FROM users WHERE email = ?'
-  ).get(email)
+  const [user] = await db.select().from(users).where(eq(users.email, email))
 
   if (!user) {
     return c.json({ error: 'Invalid credentials' }, 401)
   }
 
-  const valid = await Bun.password.verify(password, user.password_hash)
+  const valid = await Bun.password.verify(password, user.passwordHash)
   if (!valid) {
     return c.json({ error: 'Invalid credentials' }, 401)
   }

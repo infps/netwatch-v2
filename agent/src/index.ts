@@ -1,7 +1,12 @@
+import "dotenv/config";
 import { app, BrowserWindow, ipcMain } from "electron";
 import { uIOhook, UiohookMouseEvent, UiohookKeyboardEvent } from "uiohook-napi";
 import WebSocket from "ws";
 import { randomUUID } from "crypto";
+import { getScreenSources, getPrimaryDisplayBounds, checkScreenCapturePermission } from "./lib/screen-capture";
+import { injectInput, RemoteInputEvent } from "./lib/input-injector";
+import { getSessionState, setHostingSession, setViewingSession, clearSession, isInSession, isHost } from "./lib/rtc-state";
+import { getIceServers } from "./lib/ice-config";
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -60,15 +65,64 @@ function connectWebSocket() {
       if (msg.type === "auth_ok") {
         sendConnectionStatus("connected");
         startFlushInterval();
+        // Request online users after auth
+        ws?.send(JSON.stringify({ type: "get_online_users" }));
       } else if (msg.type === "auth_fail") {
         sendConnectionStatus("error");
         ws?.close();
       } else if (msg.type === "batch_ack" && msg.batchId === pendingBatchId) {
-        // Clear acknowledged events
         eventBuffer = eventBuffer.filter(
           (e) => e.timestamp > Date.now() - 60000
         );
         pendingBatchId = null;
+      }
+      // RTC messages - forward to renderer
+      else if (msg.type === "online_users") {
+        mainWindow?.webContents.send("rtc-online-users", msg.users);
+      } else if (msg.type === "rtc_incoming") {
+        mainWindow?.webContents.send("rtc-incoming-request", {
+          sessionId: msg.sessionId,
+          viewerUserId: msg.viewerUserId,
+          viewerEmail: msg.viewerEmail
+        });
+      } else if (msg.type === "rtc_accepted") {
+        setViewingSession(msg.sessionId, msg.hostUserId);
+        mainWindow?.webContents.send("rtc-accepted", {
+          sessionId: msg.sessionId,
+          hostUserId: msg.hostUserId
+        });
+      } else if (msg.type === "rtc_rejected") {
+        clearSession();
+        mainWindow?.webContents.send("rtc-rejected", {
+          sessionId: msg.sessionId,
+          reason: msg.reason
+        });
+      } else if (msg.type === "rtc_offer") {
+        mainWindow?.webContents.send("rtc-offer", {
+          sessionId: msg.sessionId,
+          offer: msg.offer
+        });
+      } else if (msg.type === "rtc_answer") {
+        mainWindow?.webContents.send("rtc-answer", {
+          sessionId: msg.sessionId,
+          answer: msg.answer
+        });
+      } else if (msg.type === "rtc_ice") {
+        mainWindow?.webContents.send("rtc-ice", {
+          sessionId: msg.sessionId,
+          candidate: msg.candidate
+        });
+      } else if (msg.type === "rtc_disconnected") {
+        clearSession();
+        mainWindow?.webContents.send("rtc-disconnected", {
+          sessionId: msg.sessionId,
+          reason: msg.reason
+        });
+      } else if (msg.type === "rtc_input") {
+        // Host receives input from viewer - inject it
+        if (isHost()) {
+          injectInput(msg.input as RemoteInputEvent);
+        }
       }
     } catch {}
   });
@@ -282,6 +336,78 @@ const createWindow = (): void => {
     );
     if ("error" in res) return { success: false, error: res.error };
     return { success: true, record: res };
+  });
+
+  // IPC handlers for RTC
+  ipcMain.handle("rtc-get-ice-servers", () => {
+    return getIceServers();
+  });
+
+  ipcMain.handle("rtc-get-screen-sources", async () => {
+    return await getScreenSources();
+  });
+
+  ipcMain.handle("rtc-get-display-bounds", () => {
+    return getPrimaryDisplayBounds();
+  });
+
+  ipcMain.handle("rtc-check-permission", () => {
+    return checkScreenCapturePermission();
+  });
+
+  ipcMain.handle("rtc-request-control", (_, targetUserId: string) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return { success: false, error: "Not connected" };
+    if (isInSession()) return { success: false, error: "Already in session" };
+    ws.send(JSON.stringify({ type: "rtc_request", targetUserId }));
+    return { success: true };
+  });
+
+  ipcMain.handle("rtc-accept", (_, sessionId: string, viewerUserId: string, viewerEmail: string) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return { success: false, error: "Not connected" };
+    setHostingSession(sessionId, viewerUserId, viewerEmail);
+    ws.send(JSON.stringify({ type: "rtc_accept", sessionId, viewerUserId }));
+    return { success: true };
+  });
+
+  ipcMain.handle("rtc-reject", (_, sessionId: string, viewerUserId: string) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return { success: false, error: "Not connected" };
+    ws.send(JSON.stringify({ type: "rtc_reject", sessionId, viewerUserId }));
+    return { success: true };
+  });
+
+  ipcMain.handle("rtc-send-offer", (_, sessionId: string, targetUserId: string, offer: RTCSessionDescriptionInit) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return { success: false, error: "Not connected" };
+    ws.send(JSON.stringify({ type: "rtc_offer", sessionId, targetUserId, offer }));
+    return { success: true };
+  });
+
+  ipcMain.handle("rtc-send-answer", (_, sessionId: string, targetUserId: string, answer: RTCSessionDescriptionInit) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return { success: false, error: "Not connected" };
+    ws.send(JSON.stringify({ type: "rtc_answer", sessionId, targetUserId, answer }));
+    return { success: true };
+  });
+
+  ipcMain.handle("rtc-send-ice", (_, sessionId: string, targetUserId: string, candidate: RTCIceCandidateInit) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return { success: false, error: "Not connected" };
+    ws.send(JSON.stringify({ type: "rtc_ice", sessionId, targetUserId, candidate }));
+    return { success: true };
+  });
+
+  ipcMain.handle("rtc-disconnect", (_, sessionId: string) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return { success: false, error: "Not connected" };
+    clearSession();
+    ws.send(JSON.stringify({ type: "rtc_disconnect", sessionId }));
+    return { success: true };
+  });
+
+  ipcMain.handle("rtc-send-input", (_, sessionId: string, input: RemoteInputEvent) => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return { success: false, error: "Not connected" };
+    ws.send(JSON.stringify({ type: "rtc_input", sessionId, input }));
+    return { success: true };
+  });
+
+  ipcMain.handle("rtc-get-session-state", () => {
+    return getSessionState();
   });
 
   mainWindow.webContents.openDevTools();

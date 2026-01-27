@@ -1,37 +1,28 @@
-import { Database } from 'bun:sqlite'
+import { pgTable, text, bigint, index } from 'drizzle-orm/pg-core'
 
-export function initSchema(db: Database) {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    )
-  `)
+export const users = pgTable('users', {
+  id: text('id').primaryKey(),
+  email: text('email').unique().notNull(),
+  passwordHash: text('password_hash').notNull(),
+  createdAt: bigint('created_at', { mode: 'number' }).notNull()
+})
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS punches (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      type TEXT NOT NULL,
-      timestamp INTEGER NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-  `)
+export const punches = pgTable('punches', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  type: text('type').notNull(),
+  timestamp: bigint('timestamp', { mode: 'number' }).notNull()
+}, (t) => [
+  index('idx_punches_user').on(t.userId)
+])
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS activity (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      event_type TEXT NOT NULL,
-      data TEXT NOT NULL,
-      timestamp INTEGER NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    )
-  `)
-
-  db.run(`CREATE INDEX IF NOT EXISTS idx_punches_user ON punches(user_id)`)
-  db.run(`CREATE INDEX IF NOT EXISTS idx_activity_user ON activity(user_id)`)
-  db.run(`CREATE INDEX IF NOT EXISTS idx_activity_id ON activity(id)`)
-}
+export const activity = pgTable('activity', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  eventType: text('event_type').notNull(),
+  data: text('data').notNull(),
+  timestamp: bigint('timestamp', { mode: 'number' }).notNull()
+}, (t) => [
+  index('idx_activity_user').on(t.userId),
+  index('idx_activity_id').on(t.id)
+])

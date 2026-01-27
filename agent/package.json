@@ -47,6 +47,8 @@
   },
   "dependencies": {
     "@electron/rebuild": "^4.0.2",
+    "@nut-tree/nut-js": "^4.2.2",
+    "dotenv": "^16.4.5",
     "@tailwindcss/cli": "^4.1.18",
     "@types/ws": "^8.18.1",
     "electron-squirrel-startup": "^1.0.1",

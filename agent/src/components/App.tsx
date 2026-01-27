@@ -10,7 +10,6 @@ const App = () => {
   const [loginError, setLoginError] = useState<string>();
 
   useEffect(() => {
-    // Check initial auth state
     window.electronAPI.getAuthState().then((state) => {
       setIsLoggedIn(state.isLoggedIn);
       setUser(state.user ?? null);

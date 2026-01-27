@@ -26,7 +26,7 @@ const config: ForgeConfig = {
   plugins: [
     new AutoUnpackNativesPlugin({}),
     new ForgeExternalsPlugin({
-      externals: ['uiohook-napi'],
+      externals: ['uiohook-napi', '@nut-tree/nut-js'],
       includeDeps: true,
     }),
     new WebpackPlugin({
