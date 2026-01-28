@@ -174,15 +174,17 @@ const Main = ({ user, onLogout }: Props) => {
         connectionStatus={connectionStatus}
       />
 
-      <div className="w-full grid grid-cols-4 gap-6 mt-6">
+      <div className="w-full grid grid-cols-3 gap-6 mt-6">
         <Card text="Events" data={events.length.toString()} />
         <Card text="Work Hour" data="4h 32m" />
         <Card text="Idle Time" data="12m" />
-        <OnlineUsersPanel
-          onRequestControl={handleRequestControl}
-          pendingRequest={pendingRequest}
-        />
       </div>
+
+      <OnlineUsersPanel
+        onRequestControl={handleRequestControl}
+        pendingRequest={pendingRequest}
+        connectionStatus={connectionStatus}
+      />
 
       <EventsTable events={events} />
 

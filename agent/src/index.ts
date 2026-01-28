@@ -63,6 +63,7 @@ function connectWebSocket() {
       const msg = JSON.parse(data.toString());
 
       if (msg.type === "auth_ok") {
+        console.log("[WS] Authenticated successfully");
         sendConnectionStatus("connected");
         startFlushInterval();
         // Request online users after auth
@@ -78,8 +79,10 @@ function connectWebSocket() {
       }
       // RTC messages - forward to renderer
       else if (msg.type === "online_users") {
+        console.log("[WS] Online users:", msg.users?.length || 0, "users");
         mainWindow?.webContents.send("rtc-online-users", msg.users);
       } else if (msg.type === "rtc_incoming") {
+        console.log("[RTC] Incoming request received:", msg);
         mainWindow?.webContents.send("rtc-incoming-request", {
           sessionId: msg.sessionId,
           viewerUserId: msg.viewerUserId,
@@ -92,6 +95,7 @@ function connectWebSocket() {
           hostUserId: msg.hostUserId
         });
       } else if (msg.type === "rtc_rejected") {
+        console.log("[RTC] Request rejected:", msg);
         clearSession();
         mainWindow?.webContents.send("rtc-rejected", {
           sessionId: msg.sessionId,
@@ -339,6 +343,12 @@ const createWindow = (): void => {
   });
 
   // IPC handlers for RTC
+  ipcMain.handle("get-online-users", () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "get_online_users" }));
+    }
+  });
+
   ipcMain.handle("rtc-get-ice-servers", () => {
     return getIceServers();
   });
@@ -356,9 +366,17 @@ const createWindow = (): void => {
   });
 
   ipcMain.handle("rtc-request-control", (_, targetUserId: string) => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return { success: false, error: "Not connected" };
-    if (isInSession()) return { success: false, error: "Already in session" };
+    console.log("[RTC] Requesting control of:", targetUserId);
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.log("[RTC] Failed: WebSocket not connected");
+      return { success: false, error: "Not connected" };
+    }
+    if (isInSession()) {
+      console.log("[RTC] Failed: Already in session");
+      return { success: false, error: "Already in session" };
+    }
     ws.send(JSON.stringify({ type: "rtc_request", targetUserId }));
+    console.log("[RTC] Request sent");
     return { success: true };
   });
 

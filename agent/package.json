@@ -29,7 +29,7 @@
     "@electron-forge/plugin-fuses": "^7.11.1",
     "@electron-forge/plugin-webpack": "^7.11.1",
     "@electron/fuses": "^1.8.0",
-    "@timfish/forge-externals-plugin": "^0.2.1",
+    "@timfish/forge-externals-plugin": "0.2.2",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@electron/rebuild": "^4.0.2",
-    "@nut-tree/nut-js": "^4.2.2",
+    "@nut-tree-fork/nut-js": "^4.2.6",
     "dotenv": "^16.4.5",
     "@tailwindcss/cli": "^4.1.18",
     "@types/ws": "^8.18.1",

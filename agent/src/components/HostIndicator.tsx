@@ -46,10 +46,18 @@ const HostIndicator = ({ sessionId, viewerUserId, viewerEmail, onDisconnect }: P
 
           // Get screen stream
           const sources = await window.electronAPI.rtcGetScreenSources();
+          if (!sources || sources.length === 0) {
+            console.error("No screen sources - permission denied?");
+            window.electronAPI.rtcDisconnect(sessionId);
+            onDisconnect();
+            return;
+          }
           const primaryScreen = sources.find((s) => s.name === "Entire Screen" || s.name.includes("Screen")) || sources[0];
 
           if (!primaryScreen) {
             console.error("No screen source found");
+            window.electronAPI.rtcDisconnect(sessionId);
+            onDisconnect();
             return;
           }
 
@@ -81,7 +89,11 @@ const HostIndicator = ({ sessionId, viewerUserId, viewerEmail, onDisconnect }: P
           window.electronAPI.rtcSendAnswer(sessionId, viewerUserId, answer);
         } catch (err) {
           console.error("Failed to setup stream:", err);
-          if (mounted) setStatus("error");
+          window.electronAPI.rtcDisconnect(sessionId);
+          if (mounted) {
+            setStatus("error");
+            onDisconnect();
+          }
         }
       });
 

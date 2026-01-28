@@ -8,16 +8,31 @@ export type ScreenSource = {
 }
 
 export async function getScreenSources(): Promise<ScreenSource[]> {
-  const sources = await desktopCapturer.getSources({
-    types: ['screen', 'window'],
-    thumbnailSize: { width: 320, height: 180 }
-  })
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ['screen', 'window'],
+      thumbnailSize: { width: 320, height: 180 }
+    })
 
-  return sources.map(source => ({
-    id: source.id,
-    name: source.name,
-    thumbnailDataUrl: source.thumbnail.toDataURL()
-  }))
+    // If no sources returned, likely permission issue
+    if (sources.length === 0 && process.platform === 'darwin') {
+      const status = systemPreferences.getMediaAccessStatus('screen')
+      console.error('[Screen] No sources returned. Permission status:', status)
+    }
+
+    return sources.map(source => ({
+      id: source.id,
+      name: source.name,
+      thumbnailDataUrl: source.thumbnail.toDataURL()
+    }))
+  } catch (err) {
+    console.error('[Screen] Failed to get sources:', err)
+    if (process.platform === 'darwin') {
+      const status = systemPreferences.getMediaAccessStatus('screen')
+      console.error('[Screen] Permission status:', status)
+    }
+    return []
+  }
 }
 
 export function getPrimaryDisplayBounds() {

@@ -55,7 +55,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("rtc-send-input", sessionId, input),
   rtcGetSessionState: () => ipcRenderer.invoke("rtc-get-session-state"),
 
-  // RTC - Event listeners
+  // RTC - Online users
+  getOnlineUsers: () => ipcRenderer.invoke("get-online-users"),
   onOnlineUsers: (callback: (users: any[]) => void) => {
     ipcRenderer.on("rtc-online-users", (_, users) => callback(users));
   },

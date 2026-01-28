@@ -95,7 +95,8 @@ declare global {
       rtcSendInput: (sessionId: string, input: RemoteInputEvent) => Promise<RtcResult>;
       rtcGetSessionState: () => Promise<RtcSessionState>;
 
-      // RTC - Event listeners
+      // RTC - Online users
+      getOnlineUsers: () => Promise<void>;
       onOnlineUsers: (callback: (users: OnlineUser[]) => void) => void;
       onIncomingRequest: (callback: (data: { sessionId: string; viewerUserId: string; viewerEmail: string }) => void) => void;
       onRtcAccepted: (callback: (data: { sessionId: string; hostUserId: string }) => void) => void;

@@ -22,6 +22,7 @@ const pendingTimeouts = new Map<string, NodeJS.Timeout>()
 const PENDING_TIMEOUT_MS = 30000 // 30s auto-reject
 
 export function addConnection(userId: string, email: string, ws: WSContext<unknown>) {
+  console.log(`[WS] User connected: ${email} (${userId})`)
   connections.set(userId, { ws, email, status: 'available' })
   broadcastOnlineUsers()
 }
@@ -57,7 +58,10 @@ export function getOnlineUsers(excludeUserId?: string): OnlineUser[] {
 export function broadcastToUser(userId: string, message: object) {
   const conn = connections.get(userId)
   if (conn) {
+    console.log(`[WS] Sending to ${userId}:`, (message as any).type)
     conn.ws.send(JSON.stringify(message))
+  } else {
+    console.log(`[WS] Failed to send to ${userId}: not connected`)
   }
 }
 
@@ -74,8 +78,17 @@ export function createSession(viewerUserId: string, hostUserId: string): RtcSess
   const viewerConn = connections.get(viewerUserId)
   const hostConn = connections.get(hostUserId)
 
-  if (!viewerConn || !hostConn) return null
-  if (viewerConn.status !== 'available' || hostConn.status !== 'available') return null
+  console.log(`[WS] Creating session: viewer=${viewerUserId} (${viewerConn?.status}), host=${hostUserId} (${hostConn?.status})`)
+  console.log(`[WS] Current connections:`, [...connections.keys()])
+
+  if (!viewerConn || !hostConn) {
+    console.log(`[WS] Session failed: missing connection (viewer: ${!!viewerConn}, host: ${!!hostConn})`)
+    return null
+  }
+  if (viewerConn.status !== 'available' || hostConn.status !== 'available') {
+    console.log(`[WS] Session failed: user not available`)
+    return null
+  }
 
   const sessionId = crypto.randomUUID()
   const session: RtcSession = {

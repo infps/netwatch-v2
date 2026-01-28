@@ -1,6 +1,6 @@
 // Input injection using @nut-tree/nut-js
 // Requires macOS Accessibility permissions
-import { mouse, keyboard, Button, Key, Point } from '@nut-tree/nut-js'
+import { mouse, keyboard, Button, Key, Point } from '@nut-tree-fork/nut-js'
 
 export type RemoteInputEvent =
   | { inputType: 'mouse_move'; x: number; y: number }

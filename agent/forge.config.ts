@@ -15,6 +15,7 @@ import { rendererConfig } from './webpack.renderer.config';
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    ignore: (path: string) => false,
   },
   rebuildConfig: {},
   makers: [
@@ -26,11 +27,12 @@ const config: ForgeConfig = {
   plugins: [
     new AutoUnpackNativesPlugin({}),
     new ForgeExternalsPlugin({
-      externals: ['uiohook-napi', '@nut-tree/nut-js'],
+      externals: ['uiohook-napi', '@nut-tree-fork/nut-js'],
       includeDeps: true,
     }),
     new WebpackPlugin({
       mainConfig,
+      port: 3001,
       renderer: {
         config: rendererConfig,
         entryPoints: [
